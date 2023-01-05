@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker exec -it `docker container ls -f ancestor=osrf/ros:humble-gazeebo -q` bash
