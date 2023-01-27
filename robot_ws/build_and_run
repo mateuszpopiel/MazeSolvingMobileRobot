@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+
+colcon build --packages-select mobile_robot
+. install/setup.bash
+ros2 launch mobile_robot base.launch.py
