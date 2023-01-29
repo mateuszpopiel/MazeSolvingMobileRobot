@@ -4,7 +4,7 @@ import time
 
 
 class LineDetector(object):
-	def __init__(self, address=0x11, references=[230, 260, 270, 280, 260]):
+	def __init__(self, address=0x11, references=[230, 260, 270, 280, 230]):
 		self.bus = smbus.SMBus(1)
 		self.address = address
 		self._references = references

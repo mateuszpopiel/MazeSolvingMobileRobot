@@ -18,8 +18,8 @@ SPEED = 0.5
 
 NO_LINE = 0b11111
 STRAIGHT_LINE = 0b11011
-SLIGHTLY_RIGHT = 0b11101
-SLIGHTLY_LEFT = 0b10111
+SLIGHTLY_LEFT = 0b11101
+SLIGHTLY_RIGHT = 0b10111
 TURN_LEFT = 0b00011
 TURN_RIGHT = 0b11000
 INTERSECTION = 0b00000
@@ -46,9 +46,12 @@ class MazeSolver(Node):
     self.line = STRAIGHT_LINE
     self.prev_line = STRAIGHT_LINE
     self.end_of_road = False
-    # self.should_turn_left=False
+    self.should_turn_left=False
+    self.left_turn_detected=False
     self.should_turn_right=False
+    self.win_possible = False
     self.eor_cnt = 0
+    self.win_cnt = 0
     self.line_sub = self.create_subscription(
       Int16, 'line', self.line_callback, 10)
     self.line_sub
@@ -72,11 +75,12 @@ class MazeSolver(Node):
   
   def timer_run_callback(self):
     # Right Wall Following Algorithm
-    if self.should_turn_right:
+    if self.win_possible:
+      activity = self.handle_win()
+    elif self.should_turn_right:
       activity = self.handle_turn_right()
-    # in right WFA if left turn detected robot should try to go forward
-    # elif self.should_turn_left:
-    #   activity = self.handle_turn_left()
+    elif self.should_turn_left:
+      activity = self.handle_turn_left()
     else:
       activity = self.handle_straight_line()
 
@@ -105,15 +109,14 @@ class MazeSolver(Node):
       self.tbot.forward(SPEED)
       activity = "going forward"
     elif self.line == SLIGHTLY_RIGHT:
-      self.tbot.turn_right(SPEED)
-      activity = "turning right"
-    elif self.line == SLIGHTLY_LEFT:
       self.tbot.turn_left(SPEED)
-      activity = "turning left"
+      activity = "turning slightly left"
+    elif self.line == SLIGHTLY_LEFT:
+      self.tbot.turn_right(SPEED)
+      activity = "turning slightly right"
     elif self.line == TURN_LEFT:
-      # Detected left turn but it is right WFA
-      # self.should_turn_left = True
-      activity = "should turn left"
+      self.left_turn_detected = True
+      activity = "left turn detected"
     elif self.line == TURN_RIGHT:
       self.should_turn_right = True
       activity = "should turn right"
@@ -121,26 +124,37 @@ class MazeSolver(Node):
       self.should_turn_right = True
       activity = "should turn right on intersection"
     elif self.line == SPECIAL_SPOT:
-      self.won = True
-      activity = "Maze solved!"
+      self.win_possible = True
+      activity = "Win possible"
     elif self.line == NO_LINE and self.prev_line == NO_LINE:
-      self.eor_cnt+=1
-      if self.eor_cnt > 3:
-        self.eor_cnt = 0
-        self.end_of_road = True
-        self.tbot.turn_right(SPEED)
-        activity = "turning_right"
+      if self.left_turn_detected:
+        self.should_turn_left = True
+        self.left_turn_detected = False
+        activity = "should turn left"
       else:
-        activity = "EOR possible"
+        self.eor_cnt+=1
+        if self.eor_cnt > 3:
+          self.eor_cnt = 0
+          self.end_of_road = True
+          self.tbot.turn_right(SPEED)
+          activity = "turning_right"
+        else:
+          activity = "EOR possible"
     else:
       activity = "don't know what is happenning o_O"
     self.prev_line = self.line
     return activity
 
   def handle_win(self):
-    self.tbot.stop()
-    self.tbot.fill_underlighting(BLUE)
-    return "Maze solved!!!"
+    self.win_cnt += 1
+    if self.win_cnt > 1:
+      self.tbot.stop()
+      self.tbot.fill_underlighting(BLUE)
+      return "Maze solved!!!"
+    else:
+      if self.line != SPECIAL_SPOT:
+        self.win_cnt = 0
+      return "Didn't win yet"
 
 def main(args=None):
   rclpy.init(args=args)
