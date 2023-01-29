@@ -44,6 +44,8 @@ class MazeSolver(Node):
     self.line = STRAIGHT_LINE
     self.prev_line = STRAIGHT_LINE
     self.end_of_road = False
+    self.should_turn_left=False
+    self.should_turn_right=False
     self.eor_cnt = 0
     self.line_sub = self.create_subscription(
       Int16, 'line', self.line_callback, 10)
@@ -68,35 +70,55 @@ class MazeSolver(Node):
   
   def timer_run_callback(self):
     line = self.line
-    if self.prev_line != NO_LINE:
-        self.eor_cnt = 0
-    if line == STRAIGHT_LINE:
-      if self.end_of_road:
-        self.end_of_road = False
-      self.tbot.forward(SPEED)
-      activity = "going forward"
-    elif line == SLIGHTLY_RIGHT:
-      self.tbot.turn_right(SPEED)
-      activity = "turning right"
-    elif line == SLIGHTLY_LEFT:
-      self.tbot.turn_left(SPEED)
-      activity = "turning_left"
-    elif line == NO_LINE and self.prev_line == NO_LINE:
-      self.eor_cnt+=1
-      if self.eor_cnt > 3:
-        self.eor_cnt = 0
-        self.end_of_road = True
-        self.tbot.turn_right(SPEED)
-        activity = "turning_right"
-      else:
-        activity = "EOR possible"
+    if self.should_turn_right:
+      self.handle_turn_right()
+    elif self.should_turn_left:
+      self.handle_turn_left()
     else:
-      activity = "don't know what is happenning o_O"
-    self.prev_line = line
+      # handle straight line
+      if self.prev_line != NO_LINE:
+          self.eor_cnt = 0
+      if line == STRAIGHT_LINE:
+        if self.end_of_road:
+          self.end_of_road = False
+        self.tbot.forward(SPEED)
+        activity = "going forward"
+      elif line == SLIGHTLY_RIGHT:
+        self.tbot.turn_right(SPEED)
+        activity = "turning right"
+      elif line == SLIGHTLY_LEFT:
+        self.tbot.turn_left(SPEED)
+      elif line == TURN_LEFT:
+        self.should_turn_left = True
+      elif line == TURN_RIGHT:
+        self.should_turn_right = True
+        activity = "turning_left"
+      elif line == NO_LINE and self.prev_line == NO_LINE:
+        self.eor_cnt+=1
+        if self.eor_cnt > 3:
+          self.eor_cnt = 0
+          self.end_of_road = True
+          self.tbot.turn_right(SPEED)
+          activity = "turning_right"
+        else:
+          activity = "EOR possible"
+      else:
+        activity = "don't know what is happenning o_O"
+      self.prev_line = line
 
     self.get_logger().info('Activity: %s' % activity)
     self.activity_msg.data = activity
     self.pub_activity.publish(self.activity_msg)
+
+  def handle_turn_right(self):
+    self.tbot.curve_forward_right(SPEED)
+    if self.line == STRAIGHT_LINE:
+      self.should_turn_right = False
+
+  def handle_turn_left(self):
+    self.tbot.curve_forward_left(SPEED)
+    if self.line == STRAIGHT_LINE:
+      self.should_turn_left = False
 
 
 def main(args=None):
