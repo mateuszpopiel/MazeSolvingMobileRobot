@@ -22,6 +22,8 @@ SLIGHTLY_RIGHT = 0b11101
 SLIGHTLY_LEFT = 0b10111
 TURN_LEFT = 0b00011
 TURN_RIGHT = 0b11000
+INTERSECTION = 0b00000
+SPECIAL_SPOT = 0b10001
 
 class MazeSolver(Node):
 
@@ -44,7 +46,7 @@ class MazeSolver(Node):
     self.line = STRAIGHT_LINE
     self.prev_line = STRAIGHT_LINE
     self.end_of_road = False
-    self.should_turn_left=False
+    # self.should_turn_left=False
     self.should_turn_right=False
     self.eor_cnt = 0
     self.line_sub = self.create_subscription(
@@ -69,11 +71,12 @@ class MazeSolver(Node):
     self.pub_distance.publish(self.distance_msg)
   
   def timer_run_callback(self):
-    line = self.line
+    # Right Wall Following Algorithm
     if self.should_turn_right:
       activity = self.handle_turn_right()
-    elif self.should_turn_left:
-      activity = self.handle_turn_left()
+    # in right WFA if left turn detected robot should try to go forward
+    # elif self.should_turn_left:
+    #   activity = self.handle_turn_left()
     else:
       activity = self.handle_straight_line()
 
@@ -108,11 +111,18 @@ class MazeSolver(Node):
       self.tbot.turn_left(SPEED)
       activity = "turning left"
     elif self.line == TURN_LEFT:
-      self.should_turn_left = True
+      # Detected left turn but it is right WFA
+      # self.should_turn_left = True
       activity = "should turn left"
     elif self.line == TURN_RIGHT:
       self.should_turn_right = True
       activity = "should turn right"
+    elif self.line == INTERSECTION:
+      self.should_turn_right = True
+      activity = "should turn right on intersection"
+    elif self.line == SPECIAL_SPOT:
+      self.won = True
+      activity = "Maze solved!"
     elif self.line == NO_LINE and self.prev_line == NO_LINE:
       self.eor_cnt+=1
       if self.eor_cnt > 3:
@@ -127,6 +137,10 @@ class MazeSolver(Node):
     self.prev_line = self.line
     return activity
 
+  def handle_win(self):
+    self.tbot.stop()
+    self.tbot.fill_underlighting(BLUE)
+    return "Maze solved!!!"
 
 def main(args=None):
   rclpy.init(args=args)
