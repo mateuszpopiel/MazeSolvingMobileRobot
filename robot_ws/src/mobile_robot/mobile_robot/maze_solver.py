@@ -71,9 +71,9 @@ class MazeSolver(Node):
   def timer_run_callback(self):
     line = self.line
     if self.should_turn_right:
-      self.handle_turn_right()
+      activity = self.handle_turn_right()
     elif self.should_turn_left:
-      self.handle_turn_left()
+      activity = self.handle_turn_left()
     else:
       # handle straight line
       if self.prev_line != NO_LINE:
@@ -88,11 +88,13 @@ class MazeSolver(Node):
         activity = "turning right"
       elif line == SLIGHTLY_LEFT:
         self.tbot.turn_left(SPEED)
+        activity = "turning left"
       elif line == TURN_LEFT:
         self.should_turn_left = True
+        activity = "should turn left"
       elif line == TURN_RIGHT:
         self.should_turn_right = True
-        activity = "turning_left"
+        activity = "should turn right"
       elif line == NO_LINE and self.prev_line == NO_LINE:
         self.eor_cnt+=1
         if self.eor_cnt > 3:
@@ -114,11 +116,13 @@ class MazeSolver(Node):
     self.tbot.curve_forward_right(SPEED)
     if self.line == STRAIGHT_LINE:
       self.should_turn_right = False
+    return "turning left (turn detected)"
 
   def handle_turn_left(self):
     self.tbot.curve_forward_left(SPEED)
     if self.line == STRAIGHT_LINE:
       self.should_turn_left = False
+    return "turning left (turn_detected)"
 
 
 def main(args=None):
