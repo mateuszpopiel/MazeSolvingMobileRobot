@@ -96,44 +96,61 @@ class MazeSolver(Node):
     self.pub_activity.publish(self.activity_msg)
 
   def handle_turn_right(self):
-    self.tbot.curve_forward_right(SPEED)
-    if self.line == STRAIGHT_LINE:
-      self.tbot.forward(SPEED)
+    if self.line == SPECIAL_SPOT:
       self.should_turn_right = False
-    return "turning left (turn detected)"
+      self.win_possible = True
+      activity = "possible win on right turn"
+    else:
+      self.tbot.curve_forward_right(SPEED)
+      if self.line == STRAIGHT_LINE:
+        self.tbot.forward(SPEED)
+        self.should_turn_right = False
+      activity = "turning right"
+    return activity
 
   def handle_turn_left(self):
-    self.left_cnt += 1
-    if self.left_cnt > 1:
-      self.left_turn_detected = True
-      self.left_turn_possible = False
-      self.left_cnt = 0
-      if self.left_turn_detected:
-        if self.line == STRAIGHT_LINE:
-          self.tbot.forward(SPEED)
-          self.left_turn_detected = False
-          activity = "turned left"
-        else:
-          self.tbot.turn_left(SPEED)
-          activity = "turning left"
-    elif self.line == TURN_LEFT or self.line == TURN_LEFT_2:
-      activity = "left turn still possible"
+    if self.line == SPECIAL_SPOT:
+      self.should_turn_left = False
+      self.win_possible = True
+      activity = "possible win on left turn"
     else:
-      activity = "no turn detected"
-      self.left_turn_possible = False
+      self.left_cnt += 1
+      if self.left_cnt > 1:
+        self.left_turn_detected = True
+        self.left_turn_possible = False
+        if self.left_turn_detected:
+          if self.line == STRAIGHT_LINE:
+            self.tbot.forward(SPEED)
+            self.left_turn_detected = False
+            activity = "turned left"
+            self.left_cnt = 0
+          else:
+            self.tbot.curve_forward_left(SPEED)
+            activity = "turning left"
+      # elif self.line == TURN_LEFT or self.line == TURN_LEFT_2:
+      elif self.line == TURN_LEFT:
+        activity = "left turn still possible"
+      else:
+        activity = "no turn detected"
+        self.left_turn_possible = False
     return activity
 
   def handle_win(self):
     self.win_cnt += 1
+    SPEED = 0.3
     if self.win_cnt > 1:
       self.tbot.stop()
       self.tbot.fill_underlighting(BLUE)
-      return "Maze solved!!!"
+      activity = "Maze solved!!!"
     else:
-      if self.line != SPECIAL_SPOT:
+      if not self.possible_winning_spot():
         self.win_cnt = 0
         self.win_possible = False
-      return "Didn't win yet"
+        SPEED = 0.5
+        activity = "Didn't win yet"
+      else:
+        activity = "Win still possible"
+    return activity
 
   def handle_straight_line(self):
     if self.prev_line != NO_LINE:
@@ -149,15 +166,17 @@ class MazeSolver(Node):
     elif self.line == SLIGHTLY_LEFT or self.line == SLIGHTLY_LEFT_2:
       self.tbot.turn_right(SPEED)
       activity = "turning slightly right"
-    elif self.line == TURN_LEFT or self.line == TURN_LEFT_2:
-      self.left_turn_possible = True
-      activity = "left turn detected"
-    elif self.line == TURN_RIGHT or self.line == TURN_RIGHT_2:
-      self.should_turn_right = True
-      activity = "should turn right"
     elif self.line == INTERSECTION:
       self.should_turn_right = True
       activity = "should turn right on intersection"
+    elif self.line == TURN_RIGHT or self.line == TURN_RIGHT_2:
+    # elif self.line == TURN_RIGHT:
+      self.should_turn_right = True
+      activity = "should turn right"
+    elif self.line == TURN_LEFT or self.line == TURN_LEFT_2:
+    # elif self.line == TURN_LEFT:
+      self.left_turn_possible = True
+      activity = "left turn detected"
     elif self.line == SPECIAL_SPOT:
       self.win_possible = True
       activity = "Win possible"
@@ -173,6 +192,11 @@ class MazeSolver(Node):
     else:
       activity = "don't know what is happenning o_O"
     return activity
+
+  def possible_winning_spot(self):
+    return (self.line == SPECIAL_SPOT) or \
+      (self.line == TURN_LEFT_2) or \
+      (self.line == TURN_RIGHT_2)
 
 
 def main(args=None):
