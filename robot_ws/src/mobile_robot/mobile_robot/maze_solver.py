@@ -17,6 +17,8 @@ MAX_DISTANCE = 20.0
 SPEED = 0.5
 
 NO_LINE = 0b11111
+NO_LINE_2 = 0b01111
+NO_LINE_3 = 0b11110
 STRAIGHT_LINE = 0b11011
 SLIGHTLY_LEFT = 0b11101
 SLIGHTLY_LEFT_2 = 0b11001
@@ -24,6 +26,7 @@ SLIGHTLY_RIGHT = 0b10111
 SLIGHTLY_RIGHT_2 = 0b10011
 TURN_LEFT = 0b00011
 TURN_LEFT_2 = 0b00001
+TURN_LEFT_3 = 0b00111
 TURN_RIGHT = 0b11000
 TURN_RIGHT_2 = 0b10000
 TURN_RIGHT_3 = 0b11100
@@ -51,10 +54,8 @@ class MazeSolver(Node):
     self.line = STRAIGHT_LINE
     self.prev_line = STRAIGHT_LINE
     self.end_of_road = False
-    self.should_turn_left=False
-    self.left_turn_possible=False
-    self.left_turn_detected = False
     self.should_turn_right=False
+    self.turning_right = False
     self.win_possible = False
     self.eor_cnt = 0
     self.win_cnt = 0
@@ -86,8 +87,6 @@ class MazeSolver(Node):
       activity = self.handle_win()
     elif self.should_turn_right:
       activity = self.handle_turn_right()
-    elif self.left_turn_possible or self.left_turn_detected:
-      activity = self.handle_turn_left()
     else:
       activity = self.handle_straight_line()
 
@@ -102,11 +101,23 @@ class MazeSolver(Node):
       self.win_possible = True
       activity = "possible win on right turn"
     else:
-      self.tbot.curve_forward_right(SPEED)
-      if self.line == STRAIGHT_LINE:
-        self.tbot.forward(SPEED)
-        self.should_turn_right = False
-      activity = "turning right"
+      if not self.turning_right:
+        self.tbot.curve_forward_right(SPEED)
+      if self.no_line_detected() or self.line == TURN_RIGHT_3:
+        self.turning_right = True
+        activity = "turning right - no line detected"
+      elif self.turning_right:
+        if self.line == STRAIGHT_LINE or \
+           self.line == SLIGHTLY_LEFT_2 or \
+           self.line == SLIGHTLY_RIGHT_2:
+          self.tbot.forward(SPEED)
+          self.should_turn_right = False
+          self.turning_right = False
+          activity = "turned right"
+        else:
+          activity = "turning_right"
+      else:
+        activity = "turning right - still on the line"
     return activity
 
   def handle_win(self):
@@ -150,9 +161,14 @@ class MazeSolver(Node):
          self.line == TURN_RIGHT_3:
       self.should_turn_right = True
       activity = "should turn right"
+    elif self.line == TURN_LEFT or \
+         self.line == TURN_LEFT_2 or \
+         self.line == TURN_LEFT_3:
+      # Recognize left turn but ignore
+      activity = "possible left turn - do nothing"
     elif self.line == SPECIAL_SPOT:
       self.win_possible = True
-      activity = "Win possible"
+      activity = "win possible"
     elif self.line == NO_LINE and self.prev_line == NO_LINE:
       self.eor_cnt+=1
       if self.eor_cnt > 3:
@@ -170,6 +186,11 @@ class MazeSolver(Node):
     return (self.line == SPECIAL_SPOT) or \
       (self.line == TURN_LEFT_2) or \
       (self.line == TURN_RIGHT_2)
+
+  def no_line_detected(self):
+    return self.line == NO_LINE or \
+      self.line == NO_LINE_2 or \
+      self.line == NO_LINE_3
 
 
 def main(args=None):
