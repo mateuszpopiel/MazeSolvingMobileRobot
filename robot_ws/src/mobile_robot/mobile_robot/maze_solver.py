@@ -161,10 +161,10 @@ class MazeSolver(Node):
       self.tbot.forward(SPEED)
       activity = "going forward"
     elif self.line == SLIGHTLY_RIGHT or self.line == SLIGHTLY_RIGHT_2:
-      self.tbot.turn_left(SPEED)
+      self.tbot.curve_forward_left(SPEED)
       activity = "turning slightly left"
     elif self.line == SLIGHTLY_LEFT or self.line == SLIGHTLY_LEFT_2:
-      self.tbot.turn_right(SPEED)
+      self.tbot.curve_forward_right(SPEED)
       activity = "turning slightly right"
     elif self.line == INTERSECTION:
       self.should_turn_right = True
